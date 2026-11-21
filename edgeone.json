@@ -1,0 +1,5 @@
+{
+  "buildCommand": "node edgeone/build.mjs",
+  "outputDirectory": "./dist",
+  "nodeVersion": "24.11.0"
+}
