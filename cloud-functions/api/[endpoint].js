@@ -3,7 +3,10 @@ const routes = new Set(['/api/access', '/api/table']);
 const maxBodySize = 8192;
 
 function error(message, status) {
-  return Response.json({error: message}, {status, headers: {'Cache-Control': 'no-store'}});
+  return new Response(JSON.stringify({error: message}), {
+    status,
+    headers: {'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store'},
+  });
 }
 
 export async function onRequest({request}) {
@@ -34,7 +37,9 @@ export async function onRequest({request}) {
     init.body = body;
   }
 
-  const upstream = new URL(url.pathname + url.search, backendOrigin);
+  const upstream = new URL(url.pathname, backendOrigin);
+  const room = url.searchParams.get('room');
+  if (url.pathname === '/api/table' && room) upstream.searchParams.set('room', room);
   let response;
   try {
     response = await fetch(upstream.href, init);

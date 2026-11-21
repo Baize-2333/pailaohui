@@ -1,4 +1,4 @@
-import {clubFetch} from './network.js';
+import {clubFetch,readClubReply} from './network.js';
 import {ALL,COLORS,cards,cardMap,names,levels,zero,total,points,bonuses,payment,evoOptions,validTake,ranking} from './engine.js';
 import {icon,esc,sprite,ball,chips,cardTile,blockTitle,guideRows,rulesHtml} from './ui.js';
 import {playAudio,initAudio} from './audio.js';
@@ -90,7 +90,7 @@ function receive(r){
  if(!old||r.rev!==old.rev){if(modal==='board-info'){if(document.activeElement?.name==='text'){needsRefresh=true;return}boardInfo()}if(modal==='detail'&&detailCard)detail(detailCard);if(!modal&&document.activeElement?.matches('input[name=text]')){needsRefresh=true;return}draw()}
 }
 async function api(data=null,params=''){
- const res=await clubFetch('/api/table'+params,{method:data?'POST':'GET',headers:{Authorization:'Bearer '+token,...(data?{'Content-Type':'application/json'}:{})},...(data?{body:JSON.stringify(data)}:{}),cache:'no-store'});const value=await res.json().catch(()=>({error:'服务器暂时未响应'}));
+ const res=await clubFetch('/api/table'+params,{method:data?'POST':'GET',headers:{Authorization:'Bearer '+token,...(data?{'Content-Type':'application/json'}:{})},...(data?{body:JSON.stringify(data)}:{}),cache:'no-store'});const value=await readClubReply(res);
  if(!res.ok){if(res.status===401){open=false;room=null;closeModal();draw()}const err=Error(value.error||'请求失败');err.status=res.status;throw err}return value;
 }
 let listRequest=0,lastBackgroundPoll=0,restoreCode='';
@@ -203,9 +203,9 @@ document.addEventListener('submit',async e=>{const f=e.target;if(!f.dataset.form
  if(kind==='profile'){profile={name:data.name.trim()||'训练师',avatar:Number(data.avatar)||25};save('profile',profile);closeModal();draw();return}
  if(kind==='chat'){if(!String(data.text||'').trim())return;const showInfo=modal==='board-info';await adjust('chat',{text:data.text});if(showInfo&&room?.game)boardInfo();return}
  if(pending)return;const submit=f.querySelector('[type=submit]');if(submit)submit.disabled=true;
- try{if(kind==='access'){pending=true;const res=await clubFetch('/api/access',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:data.password})});const v=await res.json();if(!res.ok)throw Error(v.error||'无法进入大厅');pending=false;playAudio('turn',sound);await unlocked()}
+ try{if(kind==='access'){pending=true;const res=await clubFetch('/api/access',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:data.password})});const v=await readClubReply(res);if(!res.ok||v.open!==true)throw Error(v.error||'无法确认大厅登录状态，请重新进入');pending=false;playAudio('turn',sound);await unlocked()}
  else{profile.name=data.name.trim()||'训练师';save('profile',profile);if(kind==='join')return await joinCode(data.code);pending=true;const r=await api({kind:'create',title:data.title,capacity:+data.capacity,mode:data.mode,listed:!!data.listed,...profile});closeModal();receive(r)}}
  catch(err){errors(err.message)}finally{pending=false;if(submit)submit.disabled=false}});
 document.addEventListener('input',e=>{if(e.target.name==='search'){search=e.target.value;const grid=$('.albumgrid');grid.innerHTML=cards.filter(c=>(!tierFilter||c.tier===tierFilter)&&c.name.includes(search)).map(c=>cardTile(c.id)).join('')||'<p>没有匹配的宝可梦。</p>'}});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();if(e.key==='Tab'&&modal){const all=[...layers.querySelectorAll('button:not(:disabled),input,select,a,summary')];if(e.shiftKey&&document.activeElement===all[0]){e.preventDefault();all.at(-1)?.focus()}else if(!e.shiftKey&&document.activeElement===all.at(-1)){e.preventDefault();all[0]?.focus()}}});
-draw();clubFetch('/api/access',{cache:'no-store'}).then(r=>r.json()).then(v=>{if(v.open)unlocked()}).catch(()=>{});setInterval(refresh,2200);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});
+draw();clubFetch('/api/access',{cache:'no-store'}).then(async r=>{if(r.ok && (await readClubReply(r)).open===true)await unlocked()}).catch(()=>{});setInterval(refresh,2200);document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh()});
