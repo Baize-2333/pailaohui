@@ -1,7 +1,6 @@
 // A Pages project is hosted under /repository/. Its game server has a separate origin.
 const backend=document.querySelector('meta[name="club-backend"]')?.content;
 const remote=backend && new URL(backend).origin!==location.origin;
-const ticketKey='club.ticket.'+new URL('.',import.meta.url).pathname;
 export async function readClubReply(response){
   try {
     const value=await response.json();
@@ -25,14 +24,5 @@ export async function clubFetch(path,options={}){
     }
     return fetch(url,options);
   }
-  const headers=new Headers(options.headers);
-  const ticket=sessionStorage.getItem(ticketKey);
-  if(ticket)headers.set('X-Club-Session',ticket);
-  const result=await fetch(new URL(path,backend),{...options,headers,credentials:'omit',cache:'no-store'});
-  if(result.status===401)sessionStorage.removeItem(ticketKey);
-  if(path==='/api/access'&&options.method==='POST'&&result.ok){
-    const {session}=await readClubReply(result.clone());
-    if(session)sessionStorage.setItem(ticketKey,session);
-  }
-  return result;
+  return fetch(new URL(path,backend),{...options,credentials:'omit',cache:'no-store'});
 }

@@ -19,10 +19,7 @@ export async function onRequest({request}) {
 
   const headers = new Headers({Accept: 'application/json'});
   const authorization = request.headers.get('authorization');
-  const session = request.headers.get('cookie')?.split(';')
-    .map(part => part.trim()).find(part => part.startsWith('kanto_gate='));
   if (authorization) headers.set('Authorization', authorization);
-  if (session) headers.set('Cookie', session);
 
   const init = {method: request.method, headers, redirect: 'manual'};
   if (request.method === 'POST') {
@@ -55,9 +52,5 @@ export async function onRequest({request}) {
     'Content-Type': 'application/json',
     'Cache-Control': 'no-store',
   });
-  const setCookie = response.headers.get('set-cookie');
-  if (url.pathname === '/api/access' && setCookie?.startsWith('kanto_gate=')) {
-    responseHeaders.set('Set-Cookie', setCookie);
-  }
   return new Response(response.body, {status: response.status, headers: responseHeaders});
 }
