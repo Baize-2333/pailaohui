@@ -1,0 +1,4 @@
+let ctx;
+export function initAudio(){try{const A=window.AudioContext||window.webkitAudioContext;if(A){ctx??=new A();if(ctx.state==='suspended')ctx.resume().catch(()=>{})}}catch{}}
+const tracks={tap:[440],take:[700,940,1175],reserve:[392,523],catch:[523,659,784,1047],evolve:[392,494,587,784,988,1175],turn:[660,880],win:[523,659,784,1047,988,1175],discard:[494,392]};
+export function playAudio(type,on){if(!on||ctx?.state!=='running')return;const line=tracks[type]||tracks.tap;line.forEach((f,i)=>{const t=ctx.currentTime+i*(type==='evolve'?.085:.064),osc=ctx.createOscillator(),gain=ctx.createGain();osc.type=type==='take'?'sine':'triangle';osc.frequency.value=f;gain.gain.setValueAtTime(.0001,t);gain.gain.exponentialRampToValueAtTime(.065,t+.008);gain.gain.exponentialRampToValueAtTime(.0001,t+.16);osc.connect(gain).connect(ctx.destination);osc.start(t);osc.stop(t+.18)})}
