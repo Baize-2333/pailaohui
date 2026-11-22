@@ -25,11 +25,13 @@ function modePicker(){
  '<label><input type="radio" name="mode" value="'+id+'" '+(id===DEFAULT_MODE?'checked':'')+'><span><b>'+mode.name+'</b><small>'+mode.description+'</small></span></label>').join('')+
  '<p>全桌使用同一模式，提示仅在各自的屏幕显示。</p></fieldset>';
 }
+let coachOpen;
 function routePanel(route,mine){
  if(!route)return '';
- return '<section class="panel coach">'+blockTitle('spark','AI 路线指导','','<span class="private-note">'+icon('lock',13)+'仅自己可见</span>')+
+ const open=coachOpen ?? window.matchMedia('(min-width: 800px)').matches;
+ return '<details class="panel coach" '+(open?'open':'')+'><summary>'+icon('spark',17)+'<strong>AI 路线指导</strong><span class="private-note">'+icon('lock',12)+'仅自己可见</span></summary>'+
  '<div class="coach-body"><h3>'+esc(route.title)+'</h3><p>'+esc(route.reason)+'</p><ol>'+route.steps.map(step=>'<li>'+esc(step)+'</li>').join('')+'</ol>'+
- (!mine?'<small>下回合预案 · 轮到你时会按最新牌面更新</small>':'')+'</div></section>';
+ (!mine?'<small>下回合预案 · 轮到你时会按最新牌面更新</small>':'')+'</div></details>';
 }
 function expertEvolution(game,player){
  function list(ids){return ids.filter(Boolean).map(id=>'<option value="'+id+'">'+esc(cardMap[id].name)+' · '+id+'</option>').join('')}
@@ -51,6 +53,10 @@ function formField(label,field){return '<label class="field">'+label+field+'</la
 function footer(){return '<footer><div class="foot-left">'+icon('gem',16)+'牌老汇·群友是㊗️ <span>／</span> 宝可梦桌游</div><small>宝可梦主题非官方同人桌游</small></footer>'}
 function draw(){
  const yy=window.scrollY;
+ const coach=root.querySelector('details.coach');
+ if(coach)coachOpen=coach.open;
+ const table=room?.game && screen!=='album' && screen!=='rules' && room.status!=='waiting';
+ root.classList.toggle('at-table',Boolean(table));
  root.innerHTML=header()+'<div class="container">'+(screen==='album'?album():screen==='rules'?'<section class="pagehead"><span class="eyebrow">RULEBOOK</span><h1>玩法指南</h1></section><div class="panel fullrules">'+rulesHtml+'</div>':room?room.status==='waiting'?waiting():board():lobby())+footer()+'</div>';
  if(yy>0)window.scrollTo(0,yy);
 }
@@ -63,14 +69,15 @@ function board(){
  const tile=id=>cardTile(id,'detail',hints?.status[id]);
  const prompt=g.done?'本局已结算':!mine?'等待 '+cur.name+' 行动':g.phase==='main'?(beginner?'轮到你了，拿球、捕捉或保留一张卡':'轮到你行动了'):g.phase==='discard'?'请选择要归还的精灵球':expert?'结束阶段':'你可以进化一只宝可梦';
  
- return '<div class="board-head"><div><span class="eyebrow">GAME TABLE · '+room.code+' <b class="mode-tag">'+roomMode(room).name+'模式</b></span><h1>'+esc(room.title)+'</h1></div><div class="actions">'+btn('board-info','log','记录与聊天')+btn('rules','book','规则')+(!g.done?(room.hostId===room.you?btn('dissolve-confirm','exit','解散房间','quiet'):icoBtn('retire-confirm','exit','退出并交由电脑接管')):'')+'</div></div><div class="turnbar '+(mine?'my-turn':'')+'"><span>'+icon('clock')+'第 '+g.round+' 轮</span><b>'+esc(prompt)+'</b>'+(g.finalRound?'<em>最后一轮</em>':'')+'</div>'+
- (g.done?resultPanel(g):routePanel(hints?.route,mine))+'<div class="scoreboard">'+g.players.map(pl=>'<button data-act="team" data-id="'+pl.id+'" class="score '+(pl.id===cur.id&&!g.done?'current':'')+'">'+sprite(pl.avatar)+'<div><strong>'+esc(pl.name)+(pl.id===p.id?' · 你':'')+'</strong><small>'+pl.owned.length+' 张宝可梦 · '+total(pl.balls)+' 个球</small></div><b>'+points(pl)+'<small> 分</small></b></button>').join('')+'</div>'+
+ return '<div class="board-head"><div><span class="eyebrow">GAME TABLE · '+room.code+' <b class="mode-tag">'+roomMode(room).name+'模式</b></span><h1>'+esc(room.title)+'</h1></div><div class="actions">'+btn('board-info','log','记录与聊天')+btn('rules','book','规则')+(!g.done?(room.hostId===room.you?btn('dissolve-confirm','exit','解散房间','quiet'):icoBtn('retire-confirm','exit','退出并交由电脑接管')):'')+'</div></div>'+(g.done?resultPanel(g):'')+'<div class="table-grid"><aside class="action-rail"><div class="turnbar '+(mine?'my-turn':'')+'"><span>'+icon('clock')+'第 '+g.round+' 轮</span><b>'+esc(prompt)+'</b>'+(g.finalRound?'<em>最后一轮</em>':'')+'</div>'+
+ (!g.done?routePanel(hints?.route,mine):'')+
  '<section class="panel bank">'+blockTitle('ball',g.phase==='discard'&&mine?'归还多余精灵球':'精灵球供应区','SUPPLY',mine&&g.phase==='main'&&beginner?'<span class="muted mini">点击选择，再次点击可取同色</span>':'')+
  ballsRow(g.phase==='discard'&&mine?p.balls:g.bank,mine&&g.phase==='main'?'choose':mine&&g.phase==='discard'?'give':'noop',chosen)+
  (mine&&['main','discard'].includes(g.phase)?'<div class="ball-actions"><span>已选 '+total(chosen)+' 个'+(g.phase==='discard'?'，需归还 '+(total(p.balls)-10)+' 个':'')+'</span>'+btn('clear','refresh','清空','quiet')+btn('confirm-balls','check',g.phase==='discard'?'确认归还':'确认取球','purple-btn',(g.phase==='discard'?total(chosen)===total(p.balls)-10:validTake(g.bank,chosen))?'':'disabled')+'</div>':'')+
- (mine&&g.phase==='evolve'?(expert?expertEvolution(g,p):'<div class="evochoices">'+evoOptions(g,p).map(e=>btn('evolve','spark',esc(cardMap[e.from].name)+' → '+esc(cardMap[e.to].name),'purple-btn','data-from="'+e.from+'" data-id="'+e.to+'"')).join('')+btn('end','check','跳过进化')+'</div>'):'')+'</section>'+
+ (mine&&g.phase==='evolve'?(expert?expertEvolution(g,p):'<div class="evochoices">'+evoOptions(g,p).map(e=>btn('evolve','spark',esc(cardMap[e.from].name)+' → '+esc(cardMap[e.to].name),'purple-btn','data-from="'+e.from+'" data-id="'+e.to+'"')).join('')+btn('end','check','跳过进化')+'</div>'):'')+'</section></aside>'+
  '<section class="panel market">'+blockTitle('layers','公共牌区','MARKET')+g.market.map((row,t)=>'<div class="market-row"><div class="deck-name"><small>'+['LEVEL I','LEVEL II','LEVEL III','RARE','LEGEND'][t]+'</small><b>'+levels[t]+'</b><span>余 '+g.decks[t]+' 张</span>'+(mine&&g.phase==='main'&&t<3&&g.decks[t]&&p.reserved.length<3?'<button data-act="blind" data-id="'+t+'">盲抽保留</button>':'')+'</div><div class="market-cards">'+row.map(tile).join('')+'</div></div>').join('')+'</section>'+
- '<section class="panel hand">'+blockTitle('cards','我的训练区','TRAINER')+'<div class="handbody"><h3>持有精灵球</h3><div class="resources">'+chips(p.balls).replace('免费','暂无')+'</div><h3>永久奖励</h3><div class="resources">'+chips(bonuses(p)).replace('免费','暂无')+'</div><h3>保留卡牌 · '+p.reserved.length+' / 3</h3><div class="albumgrid">'+p.reserved.map(tile).join('')+'</div><h3>已捕捉 · '+p.owned.length+'</h3><div class="albumgrid">'+p.owned.map(tile).join('')+'</div></div></section>';
+ '<aside class="trainer-rail"><div class="scoreboard">'+g.players.map(pl=>'<button data-act="team" data-id="'+pl.id+'" class="score '+(pl.id===cur.id&&!g.done?'current':'')+'">'+sprite(pl.avatar)+'<div><strong>'+esc(pl.name)+(pl.id===p.id?' · 你':'')+'</strong><small>'+pl.owned.length+' 张宝可梦 · '+total(pl.balls)+' 个球</small></div><b>'+points(pl)+'<small> 分</small></b></button>').join('')+'</div>'+
+ '<section class="panel hand">'+blockTitle('cards','我的训练区','TRAINER')+'<div class="handbody"><h3>持有精灵球</h3><div class="resources">'+chips(p.balls).replace('免费','暂无')+'</div><h3>永久奖励</h3><div class="resources">'+chips(bonuses(p)).replace('免费','暂无')+'</div><h3>保留卡牌 · '+p.reserved.length+' / 3</h3><div class="albumgrid">'+p.reserved.map(tile).join('')+'</div><h3>已捕捉 · '+p.owned.length+'</h3><div class="albumgrid">'+p.owned.map(tile).join('')+'</div></div></section></aside></div>';
 }
 function resultPanel(g){const r=ranking(g),top=r[0],wins=r.filter(p=>points(p)===points(top)&&p.tucked.length===top.tucked.length&&p.owned.length===top.owned.length);return '<div class="result">'+icon('trophy',32)+'<h2>'+wins.map(p=>esc(p.name)).join('、')+' 获胜</h2><p>'+r.map(p=>esc(p.name)+' '+points(p)+' 分').join('　·　')+'</p><div class="actions">'+(room.hostId===room.you?btn('rematch','refresh','再来一局','gold-btn'):'')+(room.hostId===room.you?btn('dissolve-confirm','lobby','解散并返回大厅'):btn('return','lobby','返回大厅'))+'</div></div>'}
 function toast(msg){const div=document.createElement('div');div.className='toast';div.textContent=msg;$('#notices').append(div);setTimeout(()=>div.remove(),3000)}

@@ -13,3 +13,90 @@
 .coach{margin:12px 0;border-color:#534063;background:linear-gradient(115deg,#2b223a,#1b1925)}.coach .block-title{min-height:48px;padding-block:8px}.coach .titleline h2{font-size:17px}.private-note{display:flex;align-items:center;gap:5px;font-size:12px;color:#d9c6ef}.coach-body{padding:12px 20px 15px}.coach-body h3{margin:0;font-size:16px}.coach-body p,.coach-body small{font-size:13px;line-height:1.6;color:#c1b3d0}.coach-body p{margin:4px 0 8px}.coach-body ol{margin:6px 0 0;padding-inline-start:24px;line-height:1.65;font-size:14px}.coach-body li::marker{color:#cda6ff;font-weight:700}.coach-body small{display:block;margin-top:7px}.manual-evolution{display:flex;gap:12px;align-items:end;flex-wrap:wrap;padding:4px 16px 16px}.manual-evolution label{display:grid;gap:5px}.manual-evolution select{max-width:100%}
 @media(max-width:690px){.market-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.market-row .evo-print{font-size:12px}.market-row .chip{font-size:12px}.market-row .specimen{height:48px}.market-row .card-base{padding:6px}.personal-status{font-size:12px}.coach-body{padding:10px 14px}.manual-evolution>.field{width:100%}}
 .personal-status .route-goal{background:#493a25;color:#f5ce84}
+
+/* The game table uses the full viewport; the lobby and card index keep their own scale. */
+.at-table .container, .at-table .topin {
+  max-width: 2000px;
+  padding-inline: clamp(10px, 1.3vw, 26px);
+}
+.at-table .container { padding-top: 10px; }
+.at-table .topin { height: 54px; }
+.at-table .board-head { margin: 0 0 10px; gap: 6px 14px; }
+.at-table .board-head h1 { margin: 3px 0 0; font-size: clamp(21px, 2vw, 29px); overflow-wrap: anywhere; }
+.at-table .board-head .btn, .table-grid .btn { min-height: 34px; padding: 5px 10px; }
+.table-grid, .action-rail, .trainer-rail { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.table-grid { align-items: start; }
+.table-grid .panel, .table-grid .scoreboard { margin: 0; }
+.table-grid .block-title { min-height: 38px; padding: 7px 10px; }
+.table-grid .titleline { flex-wrap: wrap; gap: 5px; }
+.table-grid .titleline h2 { font-size: 16px; }
+.table-grid .turnbar { gap: 4px 8px; padding: 8px 10px; }
+.table-grid .turnbar b { overflow-wrap: anywhere; }
+.table-grid .coach { overflow: visible; position: relative; border-radius: 10px; }
+.table-grid .coach summary { cursor: pointer; display: flex; align-items: center; gap: 5px; padding: 8px 10px; font-size: 14px; }
+.table-grid .coach summary::-webkit-details-marker { display: none; }
+.table-grid .coach summary::after { content: '▸'; color: var(--purple); }
+.table-grid .coach[open] summary::after { transform: rotate(90deg); }
+.table-grid .private-note { margin-left: auto; white-space: nowrap; }
+.table-grid .coach-body { padding: 0 11px 10px; }
+.table-grid .coach-body h3 { font-size: 15px; }
+.table-grid .coach-body ol { padding-inline-start: 20px; line-height: 1.45; }
+.table-grid .scoreboard { display: grid; gap: 5px; }
+.table-grid .score { min-width: 0; padding: 5px 8px; gap: 6px; }
+.table-grid .score div { min-width: 0; }
+.table-grid .score strong { display: block; overflow: hidden; text-overflow: ellipsis; }
+.table-grid .handbody { padding: 2px 10px 10px; }
+.table-grid .handbody h3 { margin: 8px 0 4px; font-size: 14px; }
+.table-grid .market-row { padding: 6px 8px; gap: 6px; }
+.table-grid .market-cards { gap: 5px; }
+.table-grid .card-crown { padding: 3px 6px; }
+.table-grid .specimen { height: 34px; }
+.table-grid .specimen img { max-height: 33px; }
+.table-grid .card-base { padding: 4px 6px; }
+.table-grid .cost, .table-grid .evo-print, .table-grid .personal-status { margin-top: 3px; }
+.table-grid .evo-print { padding-top: 3px; }
+.table-grid .bank .block-title { flex-wrap: wrap; gap: 2px; }
+.table-grid .ball-actions, .table-grid .evochoices { justify-content: flex-start; padding: 0 8px 8px; gap: 4px; }
+.table-grid .balls-row { padding: 8px; gap: 4px; }
+.table-grid .ballcol { padding: 4px 2px; }
+.table-grid .ballcol .ball { width: 23px; height: 23px; }
+.table-grid .hand .albumgrid { grid-template-columns: repeat(auto-fill,minmax(min(102px,100%),1fr)); gap: 5px; }
+
+@media (min-width: 800px) {
+  .table-grid { grid-template-columns: clamp(209px, 16vw, 295px) minmax(0,1fr); }
+  .action-rail { grid-column: 1; grid-row: 1; }
+  .table-grid .market { grid-column: 2; grid-row: 1 / 3; }
+  .table-grid .trainer-rail { grid-column: 1; }
+  .table-grid .turnbar { flex-direction: column; align-items: flex-start; }
+  .table-grid .coach::after {
+    content: ''; position: absolute; right: -5px; top: 15px; width: 8px; height: 8px;
+    transform: rotate(45deg); background: #211c2d; border: solid #534063; border-width: 1px 1px 0 0;
+  }
+  .table-grid .balls-row { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .table-grid .market { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .table-grid .market > .block-title, .table-grid .market-row { grid-column: span 2; }
+  .table-grid .market-row { grid-template-columns: 59px minmax(0,1fr); }
+  .table-grid .market-row:nth-last-child(-n+2) { grid-column: span 1; }
+  .table-grid .market-row:last-child { border-left: 1px solid var(--line); }
+  .table-grid .market-row:nth-last-child(-n+2) .market-cards { grid-template-columns: 1fr; }
+  .table-grid .deck-name { gap: 2px; }
+  .table-grid .deck-name b { font-size: 14px; }
+  .table-grid .market .poke-card { display: grid; grid-template-columns: 1fr auto; align-content: start; }
+  .table-grid .market .card-crown { align-self: start; }
+  .table-grid .market .specimen { width: clamp(36px,4vw,64px); }
+  .table-grid .market .specimen img { max-width: 100%; }
+  .table-grid .market .card-base { grid-column: span 2; }
+  .table-grid .market .card-crown .ball { vertical-align: middle; }
+}
+@media (min-width: 1200px) {
+  .table-grid { grid-template-columns: clamp(215px,16vw,300px) minmax(0,1fr) clamp(200px,16vw,290px); }
+  .table-grid .market { grid-row: 1; }
+  .table-grid .trainer-rail { grid-column: 3; grid-row: 1; }
+}
+@media (max-width: 799px) {
+  .table-grid, .action-rail, .trainer-rail { gap: 7px; }
+  .table-grid .scoreboard { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .table-grid .market-row { grid-template-columns: 1fr; }
+  .table-grid .deck-name { flex-direction: row; align-items: center; justify-content: flex-start; }
+  .table-grid .score img { width: 24px; }
+}
