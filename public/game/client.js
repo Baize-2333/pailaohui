@@ -28,8 +28,8 @@ function modePicker(){
 let coachOpen;
 function routePanel(route,mine){
  if(!route)return '';
- const open=coachOpen ?? window.matchMedia('(min-width: 800px)').matches;
- return '<details class="panel coach" '+(open?'open':'')+'><summary>'+icon('spark',17)+'<strong>AI 路线指导</strong><span class="private-note">'+icon('lock',12)+'仅自己可见</span></summary>'+
+ const open=window.matchMedia('(max-width: 799px)').matches ? phonePanel==='coach' : (coachOpen ?? true);
+ return '<details id="table-coach" class="panel coach" '+(open?'open':'')+'><summary>'+icon('spark',17)+'<strong>AI 路线指导</strong><span class="private-note">'+icon('lock',12)+'仅自己可见</span></summary>'+
  '<div class="coach-body"><h3>'+esc(route.title)+'</h3><p>'+esc(route.reason)+'</p><ol>'+route.steps.map(step=>'<li>'+esc(step)+'</li>').join('')+'</ol>'+
  (!mine?'<small>下回合预案 · 轮到你时会按最新牌面更新</small>':'')+'</div></details>';
 }
@@ -54,7 +54,7 @@ function footer(){return '<footer><div class="foot-left">'+icon('gem',16)+'牌�
 function draw(){
  const yy=window.scrollY;
  const coach=root.querySelector('details.coach');
- if(coach)coachOpen=coach.open;
+ if(coach && window.matchMedia('(min-width: 800px)').matches)coachOpen=coach.open;
  const table=room?.game && screen!=='album' && screen!=='rules' && room.status!=='waiting';
  root.classList.toggle('at-table',Boolean(table));
  root.innerHTML=header()+'<div class="container">'+(screen==='album'?album():screen==='rules'?'<section class="pagehead"><span class="eyebrow">RULEBOOK</span><h1>玩法指南</h1></section><div class="panel fullrules">'+rulesHtml+'</div>':room?room.status==='waiting'?waiting():board():lobby())+footer()+'</div>';
@@ -63,20 +63,37 @@ function draw(){
 function waiting(){const me=room.seats.find(s=>s.id===room.you),host=room.hostId===room.you,ready=room.seats.length>=2&&room.seats.every(s=>s.ready);return '<div class="pagehead"><span class="eyebrow">TRAINER ROOM</span><h1>'+esc(room.title)+'</h1><p><b class="mode-tag">'+roomMode(room).name+'模式</b> 入座后点击准备，房主即可开始对局。</p></div><div class="lobby-grid"><section class="panel">'+blockTitle('users','等待入座','PLAYERS','<span class="state waiting">'+room.count+' / '+room.capacity+' 人</span>')+'<div class="waitbody"><div class="invitebox"><div><small>房间号</small><b>'+room.code+'</b></div>'+btn('copy','copy','复制邀请链接')+'</div><div class="seats">'+Array.from({length:room.capacity},(_,i)=>{const s=room.seats[i];return s?'<div class="seat">'+sprite(s.avatar)+'<div><b>'+esc(s.name)+(s.id===room.you?'（你）':'')+'</b><small>'+(s.id===room.hostId?'房主':s.bot?'电脑训练师':'训练师')+' · '+(s.ready?'已准备':'未准备')+'</small></div>'+(host&&s.id!==room.hostId?'<button data-act="remove" data-id="'+s.id+'" class="bare" title="移出座位">'+icon('close',16)+'</button>':'')+'</div>':'<div class="seat free">'+icon('users',25)+'<span>空闲座位</span></div>'}).join('')+'</div><div class="actions">'+(host?btn('start','game','开始游戏','gold-btn',ready?'':'disabled')+(room.count<room.capacity?btn('bot','plus','添加电脑'): ''):btn('ready','check',me.ready?'取消准备':'准备就绪',me.ready?'sub':'gold-btn'))+(host?btn('dissolve-confirm','exit','解散房间','quiet'):btn('leave','exit','离开房间','quiet'))+'</div></div></section>'+chatPanel()+'</div>'}
 function chatPanel(){return '<aside class="panel">'+blockTitle('log','房间聊天','CHAT')+'<div class="chatlog">'+(room.chat.map(x=>'<p><b>'+esc(x.name)+'</b> '+esc(x.msg)+'</p>').join('')||'<p class="muted">还没有消息。</p>')+'</div><form class="chat-form" data-form="chat"><input name="text" maxlength="160" placeholder="和同桌打个招呼" aria-label="聊天内容" required><button class="btn sub" type="submit">发送</button></form></aside>'}
 function ballsRow(bank,action,select){return '<div class="balls-row">'+ALL.map(k=>'<button class="ballcol '+(select?.[k]?'picked':'')+'" data-act="'+action+'" data-id="'+k+'" '+((action==='choose'&&k==='purple')||((action==='choose'||action==='give')&&!bank[k])?'disabled':'')+' aria-label="'+names[k]+'，剩余 '+bank[k]+'"><span>'+ball(k)+'</span><b>'+names[k]+'</b><small>× '+bank[k]+(select?.[k]?' <em>选 '+select[k]+'</em>':'')+'</small></button>').join('')+'</div>'}
+let phonePanel = '', phoneTier = 0;
+function phoneControls(hasRoute, phase) {
+ const controls = [
+  ['bank', phase === 'discard' ? '归还精灵球' : phase === 'evolve' ? '进化操作' : '精灵球', 'ball'],
+  ['team', '我的训练区', 'cards'],
+  ...(hasRoute ? [['coach', '路线提示', 'spark']] : [])
+ ];
+ return '<div class="phone-controls" role="group" aria-label="牌桌面板">'+controls.map(([id,label,symbol])=>
+  '<button type="button" data-act="phone-panel" data-id="'+id+'" aria-controls="table-'+id+'" aria-expanded="'+(phonePanel===id)+'">'+icon(symbol,16)+label+'</button>'
+ ).join('')+'</div>';
+}
+function tierControls() {
+ return '<div class="phone-tiers" role="group" aria-label="公共牌等级">'+levels.map((label,i)=>
+  '<button type="button" data-act="phone-tier" data-id="'+i+'" aria-controls="market-level-'+i+'" aria-pressed="'+(phoneTier===i)+'">'+label+'</button>'
+ ).join('')+'</div>';
+}
 function board(){
  const g=room.game;if(!g)return '';const p=g.players.find(s=>s.id===room.you),cur=g.players[g.turn],mine=!g.done&&p.id===cur.id;
  const expert=room.mode==='expert',beginner=room.mode==='beginner',hints=hintsFor(room);
  const tile=id=>cardTile(id,'detail',hints?.status[id]);
  const prompt=g.done?'本局已结算':!mine?'等待 '+cur.name+' 行动':g.phase==='main'?(beginner?'轮到你了，拿球、捕捉或保留一张卡':'轮到你行动了'):g.phase==='discard'?'请选择要归还的精灵球':expert?'结束阶段':'你可以进化一只宝可梦';
  
- return '<div class="board-head"><div><span class="eyebrow">GAME TABLE · '+room.code+' <b class="mode-tag">'+roomMode(room).name+'模式</b></span><h1>'+esc(room.title)+'</h1></div><div class="actions">'+btn('board-info','log','记录与聊天')+btn('rules','book','规则')+(!g.done?(room.hostId===room.you?btn('dissolve-confirm','exit','解散房间','quiet'):icoBtn('retire-confirm','exit','退出并交由电脑接管')):'')+'</div></div>'+(g.done?resultPanel(g):'')+'<div class="table-grid"><aside class="action-rail"><div class="turnbar '+(mine?'my-turn':'')+'"><span>'+icon('clock')+'第 '+g.round+' 轮</span><b>'+esc(prompt)+'</b>'+(g.finalRound?'<em>最后一轮</em>':'')+'</div>'+
+ return '<div class="board-head"><div><span class="eyebrow">GAME TABLE · '+room.code+' <b class="mode-tag">'+roomMode(room).name+'模式</b></span><h1>'+esc(room.title)+'</h1></div><div class="actions">'+btn('board-info','log','记录与聊天')+btn('rules','book','规则')+(!g.done?(room.hostId===room.you?btn('dissolve-confirm','exit','解散房间','quiet'):icoBtn('retire-confirm','exit','退出并交由电脑接管')):'')+'</div></div>'+(g.done?resultPanel(g):'')+'<div class="table-grid" data-phone-panel="'+phonePanel+'"><aside class="action-rail"><div class="turnbar '+(mine?'my-turn':'')+'"><span>'+icon('clock')+'第 '+g.round+' 轮</span><b>'+esc(prompt)+'</b>'+(g.finalRound?'<em>最后一轮</em>':'')+'</div>'+
+ phoneControls(!g.done && hints?.route,mine ? g.phase : '') +
  (!g.done?routePanel(hints?.route,mine):'')+
- '<section class="panel bank">'+blockTitle('ball',g.phase==='discard'&&mine?'归还多余精灵球':'精灵球供应区','SUPPLY',mine&&g.phase==='main'&&beginner?'<span class="muted mini">点击选择，再次点击可取同色</span>':'')+
+ '<section class="panel bank" id="table-bank">'+blockTitle('ball',g.phase==='discard'&&mine?'归还多余精灵球':'精灵球供应区','SUPPLY',mine&&g.phase==='main'&&beginner?'<span class="muted mini">点击选择，再次点击可取同色</span>':'')+
  ballsRow(g.phase==='discard'&&mine?p.balls:g.bank,mine&&g.phase==='main'?'choose':mine&&g.phase==='discard'?'give':'noop',chosen)+
  (mine&&['main','discard'].includes(g.phase)?'<div class="ball-actions"><span>已选 '+total(chosen)+' 个'+(g.phase==='discard'?'，需归还 '+(total(p.balls)-10)+' 个':'')+'</span>'+btn('clear','refresh','清空','quiet')+btn('confirm-balls','check',g.phase==='discard'?'确认归还':'确认取球','purple-btn',(g.phase==='discard'?total(chosen)===total(p.balls)-10:validTake(g.bank,chosen))?'':'disabled')+'</div>':'')+
  (mine&&g.phase==='evolve'?(expert?expertEvolution(g,p):'<div class="evochoices">'+evoOptions(g,p).map(e=>btn('evolve','spark',esc(cardMap[e.from].name)+' → '+esc(cardMap[e.to].name),'purple-btn','data-from="'+e.from+'" data-id="'+e.to+'"')).join('')+btn('end','check','跳过进化')+'</div>'):'')+'</section></aside>'+
- '<section class="panel market">'+blockTitle('layers','公共牌区','MARKET')+g.market.map((row,t)=>'<div class="market-row"><div class="deck-name"><small>'+['LEVEL I','LEVEL II','LEVEL III','RARE','LEGEND'][t]+'</small><b>'+levels[t]+'</b><span>余 '+g.decks[t]+' 张</span>'+(mine&&g.phase==='main'&&t<3&&g.decks[t]&&p.reserved.length<3?'<button data-act="blind" data-id="'+t+'">盲抽保留</button>':'')+'</div><div class="market-cards">'+row.map(tile).join('')+'</div></div>').join('')+'</section>'+
- '<aside class="trainer-rail"><div class="scoreboard">'+g.players.map(pl=>'<button data-act="team" data-id="'+pl.id+'" class="score '+(pl.id===cur.id&&!g.done?'current':'')+'">'+sprite(pl.avatar)+'<div><strong>'+esc(pl.name)+(pl.id===p.id?' · 你':'')+'</strong><small>'+pl.owned.length+' 张宝可梦 · '+total(pl.balls)+' 个球</small></div><b>'+points(pl)+'<small> 分</small></b></button>').join('')+'</div>'+
+ '<section class="panel market">'+blockTitle('layers','公共牌区','MARKET')+tierControls()+g.market.map((row,t)=>'<div id="market-level-'+t+'" class="market-row '+(phoneTier===t?'phone-selected':'')+'"><div class="deck-name"><small>'+['LEVEL I','LEVEL II','LEVEL III','RARE','LEGEND'][t]+'</small><b>'+levels[t]+'</b><span>余 '+g.decks[t]+' 张</span>'+(mine&&g.phase==='main'&&t<3&&g.decks[t]&&p.reserved.length<3?'<button data-act="blind" data-id="'+t+'">盲抽保留</button>':'')+'</div><div class="market-cards">'+row.map(tile).join('')+'</div></div>').join('')+'</section>'+
+ '<aside class="trainer-rail" id="table-team"><div class="scoreboard">'+g.players.map(pl=>'<button data-act="team" data-id="'+pl.id+'" class="score '+(pl.id===cur.id&&!g.done?'current':'')+'">'+sprite(pl.avatar)+'<div><strong>'+esc(pl.name)+(pl.id===p.id?' · 你':'')+'</strong><small>'+pl.owned.length+' 张宝可梦 · '+total(pl.balls)+' 个球</small></div><b>'+points(pl)+'<small> 分</small></b></button>').join('')+'</div>'+
  '<section class="panel hand">'+blockTitle('cards','我的训练区','TRAINER')+'<div class="handbody"><h3>持有精灵球</h3><div class="resources">'+chips(p.balls).replace('免费','暂无')+'</div><h3>永久奖励</h3><div class="resources">'+chips(bonuses(p)).replace('免费','暂无')+'</div><h3>保留卡牌 · '+p.reserved.length+' / 3</h3><div class="albumgrid">'+p.reserved.map(tile).join('')+'</div><h3>已捕捉 · '+p.owned.length+'</h3><div class="albumgrid">'+p.owned.map(tile).join('')+'</div></div></section></aside></div>';
 }
 function resultPanel(g){const r=ranking(g),top=r[0],wins=r.filter(p=>points(p)===points(top)&&p.tucked.length===top.tucked.length&&p.owned.length===top.owned.length);return '<div class="result">'+icon('trophy',32)+'<h2>'+wins.map(p=>esc(p.name)).join('、')+' 获胜</h2><p>'+r.map(p=>esc(p.name)+' '+points(p)+' 分').join('　·　')+'</p><div class="actions">'+(room.hostId===room.you?btn('rematch','refresh','再来一局','gold-btn'):'')+(room.hostId===room.you?btn('dissolve-confirm','lobby','解散并返回大厅'):btn('return','lobby','返回大厅'))+'</div></div>'}
@@ -89,7 +106,10 @@ function effect(type,event,g){const d=document.createElement('div');d.className=
  if(label.innerHTML)d.append(label);
  for(let i=0;i<9;i++){let s=document.createElement('i');s.style.setProperty('--i',i);d.append(s)}document.body.append(d);setTimeout(()=>d.remove(),850)}
 function receive(r){
- if(!r?.code)return;restoreCode='';const old=room?.code===r.code?room:null;if(old&&r.rev<old.rev)return;room=r;save('room',r.code);
+ if(!r?.code)return;restoreCode='';const old=room?.code===r.code?room:null;if(old&&r.rev<old.rev)return;if(!old || old.status==='waiting'){phonePanel='';phoneTier=0;}
+ if(r.game && !r.game.done && r.game.players[r.game.turn].id===r.you &&
+    ['discard','evolve'].includes(r.game.phase) && old?.game?.phase!==r.game.phase)phonePanel='bank';
+ room=r;save('room',r.code);
  if(old&&old.rev!==r.rev&&r.game){const before=old.game;const e=r.game.events.filter(x=>x.seq>(before?.seq||0)&&x.player===r.you).at(-1)||r.game.events.filter(x=>x.seq>(before?.seq||0)).at(-1);
  if(e){playAudio(e.type,sound);effect(e.type,e,r.game)}else if(before?.turn!==r.game.turn)playAudio('turn',sound);if(before?.turn!==r.game.turn&&r.game.players[r.game.turn].id===r.you&&!r.game.done){playAudio('turn',sound);toast('轮到你行动了')}
  if(before?.turn!==r.game.turn||before?.phase!==r.game.phase)chosen=zero()}
@@ -181,6 +201,13 @@ async function enterLobby(){
 }
 document.addEventListener('click',async e=>{const el=e.target.closest('[data-act]');if(!el){if(e.target.classList.contains('backdrop'))closeModal();return}const a=el.dataset.act,id=el.dataset.id;initAudio();
  if(a==='noop')return;if(a==='sound'){sound=!sound;save('sound',sound);playAudio('tap',sound);draw();return}playAudio('tap',sound);
+ if(a==='phone-panel'||a==='phone-tier'){
+  if(a==='phone-panel')phonePanel=phonePanel===id?'':id;
+  else phoneTier=Number(id);
+  draw();
+  root.querySelector('[data-act="'+a+'"][data-id="'+id+'"]')?.focus({preventScroll:true});
+  return;
+ }
  if(a==='nav'||a==='home')return navigate(a==='home'?'lobby':id);
  if(a==='profile')return preferences();if(a==='rules')return dialog('rules','玩法指南',rulesHtml);if(a==='dismiss')return closeModal();
  if(a==='create'||a==='join')return formModal(a);if(a==='join-code')return joinCode(id);
